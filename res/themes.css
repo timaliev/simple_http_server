@@ -1,0 +1,213 @@
+/* styles.css
+*  vim:set ft=css
+*  ============================================
+*  THEME COLORS DEFINITIONS
+*  ============================================
+*/
+
+/* === GitHub High Contrast Theme === */
+:root[data-theme-name="contrast"] {
+  --text-size: 24px;
+  --text-size-h1: 36px;
+  --text-size-small: 18px;
+  --text-size-list: 22px;
+  --menu-text-weight: bold;
+  --bg-color: #f8f8f2;
+  --card-bg: #ffffff;
+  --text-color: #0e1116;
+  --text-secondary: #0e1146;
+  --primary-color: #0e1116;
+  --primary-hover: #0e1146;
+  --border-color: #ffffff;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --link-color: #0349b4;
+  --link-hover: #0349ff;
+  /* Icon stroke: DARK on light background */
+  --icon-stroke: #0e1116;
+  --icon-fill: #0e1116;
+  --icon-bg: #ffffff;
+  /* Icon stroke: no change color on hover */
+  --icon-hover: #0349ff;
+}
+
+/* GitHub High Contrast dark mode */
+:root[data-theme-name="contrast"][data-mode="dark"] {
+  --text-size: 24px;
+  --text-size-h1: 36px;
+  --text-size-small: 18px;
+  --text-size-list: 22px;
+  --menu-text-weight: bold;
+  --bg-color: #0a0c10;
+  --card-bg: #242736;
+  --text-color: #f0f3f6;
+  --text-secondary: #f0f3ff;
+  --primary-color: #f8f8f2;
+  --primary-hover: #bd9fff;
+  --border-color: #343746;
+  --shadow: 0 2px 8px rgba(255, 255, 255, 0.7);
+  --link-color: #03ffff;
+  --link-hover: #03ffff;
+  /* Icon stroke: LIGHT on dark background */
+  --icon-stroke: #f0f3f6;
+  --icon-fill: #f0f3f6;
+  --icon-bg: #0a0c10;
+  /* Icon stroke: change color on hover */
+  --icon-hover: #03ffff;
+}
+
+/* === Dracula Theme === */
+:root[data-theme-name="dracula"] {
+  /* Dracula-inspired light theme colors */
+  --text-size: 16px;
+  --text-size-h1: 28px;
+  --text-size-small: 13px;
+  --text-size-list: 15px;
+  --menu-text-weight: normal;
+  --bg-color: #f8f8f2;
+  --card-bg: #ffffff;
+  --text-color: #44475a;
+  --text-secondary: #6272a4;
+  --primary-color: #bd93f9;
+  --primary-hover: #bd9fff;
+  --border-color: #e0e0e0;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --link-color: #ff79c6;
+  --link-hover: #ff79ff;
+  /* Icon stroke: DARK on light background */
+  --icon-stroke: #6272a4;
+  --icon-fill: #6272a4;
+  --icon-bg: #f8f8f2;
+  /* Icon stroke: no change color on hover */
+  --icon-hover: #bd9fff;
+}
+
+/* Dracula dark mode */
+:root[data-theme-name="dracula"][data-mode="dark"] {
+  /* Dracula-inspired dark theme colors */
+  --text-size: 16px;
+  --text-size-h1: 28px;
+  --text-size-small: 13px;
+  --text-size-list: 15px;
+  --menu-text-weight: normal;
+  --bg-color: #282a36;
+  --card-bg: #343746;
+  --text-color: #f8f8f2;
+  --text-secondary: #bblbfc;
+  --primary-color: #bd93f9;
+  --primary-hover: #bd9fff;
+  --border-color: #44475a;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --link-color: #ff79c6;
+  --link-hover: #ff79ff;
+  /* Icon stroke: LIGHT on dark background */
+  --icon-stroke: #f8f8f2;
+  --icon-fill: #f8f8f2;
+  --icon-bg: #343746;
+  /* Icon stroke: change color on hover */
+  --icon-hover: #bd93f9;
+}
+
+/* === Solarized Theme === */
+:root[data-theme-name="solarized"] {
+  /* Solarized-inspired light theme colors */
+  --text-size: 16px;
+  --text-size-h1: 28px;
+  --text-size-small: 13px;
+  --text-size-list: 15px;
+  --menu-text-weight: normal;
+  --bg-color: #fdf6e3;
+  --card-bg: #ffffff;
+  --text-color: #657b83;
+  --text-secondary: #93a1a1;
+  /*--primary-color: #268bd2;*/
+  --primary-color: #4f5b66;
+  --primary-hover: #268bd2;
+  --border-color: #eee8d5;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --link-color: #268bd2;
+  --link-hover: #268bff;
+  /* Icon stroke: DARK GRAY on light background */
+  --icon-stroke: #586e75;
+  --icon-fill: #586e75;
+  --icon-bg: #fdf6e3;
+  /* Icon stroke: no change color on hover */
+  --icon-hover: #268bd2;
+}
+
+/* Solarized dark mode */
+:root[data-theme-name="solarized"][data-mode="dark"] {
+  /* Solarized-inspired dark theme colors */
+  --text-size: 16px;
+  --text-size-h1: 28px;
+  --text-size-small: 13px;
+  --text-size-list: 15px;
+  --menu-text-weight: normal;
+  --bg-color: #1b2b34;
+  --card-bg: #073642;
+  --text-color: #c3ccdc;
+  --text-secondary: #586e75;
+  --primary-color: #85bc85;
+  --primary-hover: #268bd2;
+  --border-color: #073642;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --link-color: #21c7a8;
+  --link-hover: #268bd2;
+  /* Icon stroke: LIGHT on dark background */
+  --icon-stroke: #93a1a1;
+  --icon-fill: #93a1a1;
+  --icon-bg: #073642;
+  /* Icon stroke: change color on hover */
+  --icon-hover: #85bc85;
+}
+
+/* === Traefik Theme (default) === */
+:root[data-theme-name="traefik"] {
+  /* Traefik-like light theme colors */
+  --text-size: 16px;
+  --text-size-h1: 28px;
+  --text-size-small: 13px;
+  --text-size-list: 15px;
+  --menu-text-weight: normal;
+  --bg-color: #f4f6f8;
+  --card-bg: #ffffff;
+  --text-color: #333333;
+  --text-secondary: #6c757d;
+  --primary-color: #52a0be;
+  --primary-hover: #52a0ff;
+  --border-color: #e0e0e0;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --link-color: #52a0be;
+  --link-hover: #52a0ff;
+  /* Icon stroke: BLACK on white background */
+  --icon-stroke: #000000;
+  --icon-fill: #000000;
+  --icon-bg: #f4f6f8;
+  /* Icon stroke: no change color on hover */
+  --icon-hover: #52a0be;
+}
+
+/* Traefik dark mode */
+:root[data-theme-name="traefik"][data-mode="dark"] {
+  /* Traefik-like dark theme colors */
+  --text-size: 16px;
+  --text-size-h1: 28px;
+  --text-size-small: 13px;
+  --text-size-list: 15px;
+  --menu-text-weight: normal;
+  --bg-color: #0b1726;
+  --card-bg: #1b2733;
+  --text-color: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --primary-color: #52a0be;
+  --primary-hover: #52a0ff;
+  --border-color: #363a45;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --link-color: #52a0be;
+  --link-hover: #52a0ff;
+  /* Icon stroke: WHITE on dark background */
+  --icon-stroke: #f4f6f8;
+  --icon-fill: #f4f6f8;
+  --icon-bg: #1b2733;
+  /* Icon stroke: change color on hover */
+  --icon-hover: #52a0be;
+}
