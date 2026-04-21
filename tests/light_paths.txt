@@ -1,0 +1,8 @@
+/
+/index.html
+/index.htm
+/index.xhtml
+/index.xhtml?qqqq=1
+/index1
+/../etc/password
+/favicon.ico
