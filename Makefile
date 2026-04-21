@@ -1,10 +1,153 @@
-all: dockerimage
+# Makefile
+#
+#
 
-dockerimage:
-	docker image build -f Containerfile -t about .
+.PHONY: all image run get_binary_from_image static_binary run_test_container run_tests stop clean
+
+# Detect OS
+UNAME_S := $(shell uname -s)
+
+# Detect docker command
+ifeq ($(UNAME_S),Linux)
+    OS := linux
+    IS_DOCKER := $(shell docker ps && echo $$?)
+    IS_CONTAINERD := $(shell nerdctl -- ps && echo $$?)
+    ifeq ($(IS_DOCKER),0)
+    	DOCKER := docker
+    else ifeq ($(IS_CONTAINERD),0)
+    	DOCKER := nerdctl --
+    else
+    	$(error Containers not running on $(OS))
+    endif
+    MKDIR := mkdir -p
+    SEP := /
+else ifeq ($(UNAME_S),Darwin)
+    OS := macos
+    IS_DOCKER := $(shell docker ps >/dev/null 2>&1 && echo 1 || echo 0)
+    IS_COLIMA_CONTAINERD := $(shell colima nerdctl -- ps >/dev/null 2>&1 && echo 1 || echo 0)
+    ifeq ($(IS_DOCKER),1)
+    	DOCKER := docker
+    else ifeq ($(IS_COLIMA_CONTAINERD),1)
+    	DOCKER := colima nerdctl --
+    else
+    	$(error Containers not running on $(OS))
+    endif
+    MKDIR := mkdir -p
+    SEP := /
+else
+    $(error Unsupported OS: $(UNAME_S))
+endif
+
+ARCH := unknown
+DEBUG ?= NO
+ENVIRONMENT ?= dev
+HOSTNAME ?= localhost
+PORT ?= 8080
+IMAGE_NAME ?= about
+CONTAINER_NAME ?= about
+PARALLELISM ?= 10
+NUMBER_OF_LINES ?= 100
+CYCLES ?= 1
+
+# Detect environment
+ifeq ($(ENVIRONMENT),dev)
+    DEBUG := YES
+else ifeq ($(ENVIRONMENT),staging)
+	  DEBUG := YES
+else ifeq ($(ENVIRONMENT),prod)
+	  DEBUG := NO
+else
+    $(error Unsupported ENV: $(ENVIRONMENT); use dev, staging, or prod)
+endif
+
+ifeq ($(HOSTNAME),localhost)
+	# Detect if container image is already running
+	CONTAINER_RUNNING := $(shell $(DOCKER) ps | awk '{print $2}' | grep $(CONTAINER_NAME))
+	IS_RUNNING := $(shell [ -n "$(CONTAINER_RUNNING)" ] && echo 1 || echo 0)
+ ifeq ($(IS_RUNNING),1)
+ensure_container_running:
+	@echo "Test container '$(CONTAINER_NAME)' is already started in background"
+ else
+ensure_container_running: image run_test_container
+	@echo "Started test container '$(CONTAINER_NAME)' in background. Use 'make stop' to stop it."
+ endif
+else
+	# Container is remote
+	CONTAINER_RUNNING := $(shell curl -L -s -o /dev/null -w "%{http_code}" http://$(HOSTNAME):$(PORT))
+	IS_RUNNING := $(shell [ "$(CONTAINER_RUNNING)" == "200" ] && echo 1 || echo 0)
+ ifeq ($(IS_RUNNING),1)
+ensure_container_running:
+	@echo "Test container is running on remote host and available at http://$(HOSTNAME):$(PORT)"
+ else
+ensure_container_running:
+	$(error "Looks like test container is not running at http://$(HOSTNAME):$(PORT)")
+ endif
+endif
+
+all: image run
+
+image:
+	@echo "docker command is ${DOCKER}"
+	${DOCKER} image build -f Containerfile -t $(IMAGE_NAME) .
+
+clear_failure:
+	-@${DOCKER} stop about_static_binary >/dev/null
+
+get_binary_from_image: image clear_failure
+	@mkdir -p bin && \
+	  ${DOCKER} run --name about_static_binary --rm -d about >/dev/null && \
+		${DOCKER} cp about_static_binary:/simple-http-server-mt \
+		  ./bin/simple-http-server-mt >/dev/null && \
+		${DOCKER} images --format '{{if eq .Repository "$(IMAGE_NAME)"}}{{ .ID }}{{end}}' >.temp
+	-@${DOCKER} stop about_static_binary >/dev/null
+
+image_arch: get_binary_from_image
+	$(eval IMAGEID := $(shell cat .temp))
+	@${DOCKER} inspect -f '{{ .Architecture }}{{if .Variant}}{{ .Variant }}{{end}}-{{ .Os }}' $(IMAGEID) >./bin/.arch
+	-@rm -f .temp
+
+static_binary: image_arch
+	@echo "static binary for Linux in ./bin"
+	$(eval ARCH := $(shell head -1 ./bin/.arch))
+	@mv ./bin/simple-http-server-mt ./bin/simple-http-server-mt-$(ARCH)-static && \
+		cd ./bin && echo *
 
 run:
-	docker run -d --rm -p 8080:8080 -v ./traefik-proxy.ico:/favicon.ico:ro about
+	@echo "Running on OS: $(OS), ENVIRONMENT: $(ENVIRONMENT), CONTAINER_NAME: $(CONTAINER_NAME)"
+	${DOCKER} run --rm --name $(CONTAINER_NAME) \
+	  --env DEBUG=$(DEBUG) \
+	  -p 8080:8080 \
+		-v ./images/traefik-proxy.ico:/favicon.ico:ro \
+		-v ./res/:/res/:ro \
+		-v ./index-themes.html:/index.html:ro \
+		-v ./404.html:/404.html:ro \
+		$(CONTAINER_NAME)
 
-clean:
-	docker rmi -f about
+run_test_container:
+	${DOCKER} run -d --rm --name $(CONTAINER_NAME) \
+    --env DEBUG=$(DEBUG) \
+	  -p 8080:8080 \
+		-v ./images/traefik-proxy.ico:/favicon.ico:ro \
+		-v ./tests/files/:/files/:ro \
+		$(CONTAINER_NAME)
+
+run_tests: ensure_container_running
+	@echo "Running tests on OS: $(OS), ENVIRONMENT: $(ENVIRONMENT), CONTAINER_NAME: $(CONTAINER_NAME)"
+	cd ./tests && \
+	  DEBUG=$(DEBUG) \
+ 	  PARALLELISM=$(PARALLELISM) \
+    NUMBER_OF_LINES=$(NUMBER_OF_LINES) \
+    HOSTNAME=$(HOSTNAME) \
+    PORT=$(PORT) \
+    ./test_urls.sh $(CYCLES)
+
+stop:
+	@echo "Stopping container: $(CONTAINER_NAME)"
+	-${DOCKER} stop $(CONTAINER_NAME)
+
+clean: stop
+	-${DOCKER} rmi -f $(CONTAINER_NAME)
+	rm -rf ./bin/
+	rm -rf ./tests/urls.txt
+	rm -rf ./tests/log
+	rm -rf ./tests/files

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/res/styles.css">
   <link rel="stylesheet" href="/res/themes.css">
   <!-- Optional: Preload icons for faster rendering -->
-   <link rel="preload" href="/res/icons.svg" as="fetch"> 
+   <link rel="preload" href="/res/icons.svg" as="fetch">
 </head>
 <body>
   <div>
@@ -16,9 +16,9 @@
     <dev class="js-required-div">
       <!-- Wrapper for upper-right alignment -->
       <div class="theme-mode-controls">
-        
+
         <!--<div>Theme:</div>-->
-        
+
         <div class="custom-select theme-selector" data-theme-select>
           <div class="custom-select-trigger">Traefik</div>
           <div class="custom-select-options">
@@ -36,14 +36,14 @@
             </div>
           </div>
         </div>
-      
+
       <!-- Light/dark/auto mode selector -->
       <button type="button" data-testid="theme-switcher" class="theme-indicator mode-control" id="data-mode-toggle" title="Toggle theme mode">
         <!-- Contrast auto icon (shown in auto mode) -->
         <svg id="autoIcon" class="theme-icon" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="1">
           <use href="/res/icons.svg#autoIcon"></use>
         </svg>
-        <!-- Sun icon (shown in light mode) -->  
+        <!-- Sun icon (shown in light mode) -->
         <svg id="sunIcon" class="theme-icon hidden" stroke="currentColor" fill="none" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"  height="20" width="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30">
           <use href="/res/icons.svg#sunIcon"></use>
         </svg>
@@ -55,34 +55,18 @@
       </button>
     </div>
   </div>
-    
+
   <div class="container">
     <h1>Host Services</h1>
-    <p class="intro">This AMT Lab host serves the following services:</p>
-    
+    <p class="intro">This host serves the following services:</p>
+
     <div class="services-card">
       <ul class="services-list">
         <li>
-          <a href="/auth">
+          <a href="/404.html">
             <div>
-              <span class="service-title">Keycloak server</span>
-              <span class="service-desc">Flat Software integration</span>
-            </div>
-          </a>
-        </li>
-        <li>
-          <a href="/whoami">
-            <div>
-              <span class="service-title">Whoami reflection page</span>
-              <span class="service-desc">Debug purposes</span>
-            </div>
-          </a>
-        </li>
-        <li>
-          <a href="/dashboard/">
-            <div>
-              <span class="service-title">Traefik dashboard</span>
-              <span class="service-desc">Reverse-proxy dashboard</span>
+              <span class="service-title">Error page</span>
+              <span class="service-desc">Error page supporting themes</span>
             </div>
           </a>
         </li>
