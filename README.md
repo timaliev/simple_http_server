@@ -6,7 +6,7 @@
 
 Server with tiny footprint which serves only HTTP/1.1 GET requests on port given as command line during startup (default 8080, if command line argument is absent). Typical use is running in docker container made from scratch (only 50 Kbytes small) with files to be served mounted to the `/` with `--volume` argument. It will serve `index.html` for request with path `/`, so it is a good idea to add at least `index.html` to the container.
 
-WARNING: it is WIP for now, some debug messages are adding. This code is no guaranteed working.
+**WARNING: it is WIP for now, some debug messages are adding. This code is no guaranteed working.**
 
 ## Why
 
