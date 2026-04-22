@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Host Services</title>
@@ -7,11 +8,14 @@
   <link rel="stylesheet" href="/res/styles.css">
   <link rel="stylesheet" href="/res/themes.css">
   <!-- Optional: Preload icons for faster rendering -->
-   <link rel="preload" href="/res/icons.svg" as="fetch">
+  <link rel="preload" href="/res/icons.svg" as="fetch">
 </head>
+
 <body>
   <div>
-    <noscript><em><pre>JavaScript disabled. Enable it to use Dark mode</pre></em></noscript>
+    <noscript><em>
+        <pre>JavaScript disabled. Enable it to use Dark mode</pre>
+      </em></noscript>
     <!-- Wrapper for not showing when no JavaScript -->
     <dev class="js-required-div">
       <!-- Wrapper for upper-right alignment -->
@@ -37,23 +41,29 @@
           </div>
         </div>
 
-      <!-- Light/dark/auto mode selector -->
-      <button type="button" data-testid="theme-switcher" class="theme-indicator mode-control" id="data-mode-toggle" title="Toggle theme mode">
-        <!-- Contrast auto icon (shown in auto mode) -->
-        <svg id="autoIcon" class="theme-icon" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="1">
-          <use href="/res/icons.svg#autoIcon"></use>
-        </svg>
-        <!-- Sun icon (shown in light mode) -->
-        <svg id="sunIcon" class="theme-icon hidden" stroke="currentColor" fill="none" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"  height="20" width="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30">
-          <use href="/res/icons.svg#sunIcon"></use>
-        </svg>
-        <!-- Moon icon (shown in dark mode) -->
-        <svg id="moonIcon" class="theme-icon hidden" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-          <use href="/res/icons.svg#moonIcon"></use>
-        </svg>
-        <span class="sr-only">Toggle mode</span>
-      </button>
-    </div>
+        <!-- Light/dark/auto mode selector -->
+        <button type="button" data-testid="theme-switcher" class="theme-indicator mode-control" id="data-mode-toggle"
+          title="Toggle theme mode">
+          <!-- Contrast auto icon (shown in auto mode) -->
+          <svg id="autoIcon" class="theme-icon" width="20" height="20" viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg" stroke-width="1">
+            <use href="/res/icons.svg#autoIcon"></use>
+          </svg>
+          <!-- Sun icon (shown in light mode) -->
+          <svg id="sunIcon" class="theme-icon hidden" stroke="currentColor" fill="none" stroke-width="1"
+            stroke-linecap="round" stroke-linejoin="round" height="20" width="20" xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 30 30">
+            <use href="/res/icons.svg#sunIcon"></use>
+          </svg>
+          <!-- Moon icon (shown in dark mode) -->
+          <svg id="moonIcon" class="theme-icon hidden" width="20" height="20" viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true" focusable="false">
+            <use href="/res/icons.svg#moonIcon"></use>
+          </svg>
+          <span class="sr-only">Toggle mode</span>
+        </button>
+      </div>
   </div>
 
   <div class="container">
@@ -76,4 +86,5 @@
 
   <script src="/res/scripts.js"></script>
 </body>
+
 </html>
