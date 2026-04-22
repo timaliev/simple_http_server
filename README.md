@@ -17,7 +17,7 @@ Project was born from simple demand to serve custom error page while using with 
 You can checkout repository and start things up using `make`. Supplied `Makefile` contains basic scenarios. Without arguments, `make` will build image and start demo container locally with `docker` or `containerd`.
 
 ```shell
-$ git clone https://github.org/timaliev/simple_http_server.git
+$ git clone https://github.com/timaliev/simple_http_server.git
 $ cd simple_http_server
 $ make
 ```
@@ -36,9 +36,9 @@ $ ./bin/simple-http-server-mt-arm64v8-linux-static # Example
 
 You can run server locally (for testing purposes) or in `docker-compose`/`k8s` environments.
 
-To run it without container (OK for local testing deployments only), you can get
+To run it without container (OK for local testing deployments only), you can get static binaries in `./bin` (see Installing above).
 
-WARNING: only about 30 MIME types are implemented with very basic detection by file extension name. So it is possible that your data will be given `application/octet-stream` MIME-type.
+WARNING: only about 30 MIME types are implemented with very basic detection by file extension name. So it is possible that your data will be given `application/octet-stream` MIME-type (default).
 
 ## Debugging
 
