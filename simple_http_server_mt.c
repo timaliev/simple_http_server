@@ -1,6 +1,7 @@
 // simple_http_server_mt.c
 // vim:set ft=c
 //
+#include <stddef.h>
 #define _POSIX_C_SOURCE 200809L
 #include <arpa/inet.h>
 #include <ctype.h>
@@ -9,7 +10,6 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>
-#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,11 +25,12 @@
 #endif
 
 typedef struct {
-  long pid;
-  char comm[17];
   char state;
+  long pid;
+  // char comm[17];
   long ppid, pgrp, session, tty_nr;
-  unsigned long long flags, minflt, cminflt, majflt, cmajflt;
+  int flags;
+  unsigned long long minflt, cminflt, majflt, cmajflt;
   unsigned long long utime, stime, cutime, cstime;
   long priority, nice, num_threads;
   unsigned long long start_time;
@@ -64,25 +65,24 @@ int read_proc_stat(proc_stat *out) {
   while (*rest == ' ')
     rest++;
 
+  // fprintf(stderr, "DEBUG: ************ read_proc_stat() line 67. OK here. sizeof rest=%lu\n%s\n", sizeof(rest), rest);
   // Parse all fields from the tail (rest of the line is numeric)
-  return sscanf(rest,
-                "%c %ld %ld %ld %ld %llu %llu %llu %llu %llu %llu %llu %ld %ld "
-                "%ld %llu %llu %llu %llu %ld %*d %*d %*d %*d %*d %*d %*d %*d "
-                "%*d %*d %*d %llu %ld",
-                &out->state, &out->ppid, &out->pgrp, &out->session,
-                &out->tty_nr, &out->flags, &out->minflt, &out->cminflt,
-                &out->majflt, &out->cmajflt, &out->utime, &out->stime,
-                &out->cutime, &out->cstime, &out->priority, &out->nice,
-                &out->num_threads, &out->start_time, &out->vsize,
-                &out->rss) >= 20
-             ? 0
-             : -1;
+  // int res = sscanf(
+  //     rest,
+  //     "%c %ld %ld %ld %ld %d %llu %llu %llu %llu %llu %llu %llu %llu %ld %ld %ld %llu %llu %ld",
+  //     &out->state, &out->ppid, &out->pgrp, &out->session, &out->tty_nr,
+  //     &out->flags, &out->minflt, &out->cminflt, &out->majflt, &out->cmajflt,
+  //     &out->utime, &out->stime, &out->cutime, &out->cstime, &out->priority,
+  //     &out->nice, &out->num_threads, &out->start_time, &out->vsize, &out->rss);
+  int res = 1;
+  // fprintf(stderr, "DEBUG: ************ read_proc_stat() line 77. OK here res=%d\n", res);
+  return (res >= 20) ? 0 : -1;
 #else
   return -1; // unimplemented
 #endif
 }
 
-/// Read RSS of current process on Linux (in pages; multiply by page size)
+/// Read RSS of current process on Linux (multiplyed by page size)
 long get_mem_rss(void) {
 #ifdef __linux__
   FILE *f = fopen("/proc/self/statm", "r");
@@ -132,15 +132,19 @@ int get_open_fd_count(void) {
 #define HAS_GLIBC_2_32 0
 #endif
 
+/**************
+ * PARAMETERS *
+ **************/
+#define PROGRAM_NAME_LEN 32
 #define BUFFER_SIZE 8192
 #define ROOT_DIR "."
 #define DEFAULT_PORT 8080
-#define MAX_THREADS 8
+#define MAX_THREADS 16
 #define MAX_THREADS_RETRY_COUNT 3
-#define SLEEP_NSEC 1000
+#define SLEEP_NSEC 10000
 
-char command[32];
 bool is_debug = false;
+char command[PROGRAM_NAME_LEN + 1];
 
 typedef struct {
   int client_fd;
@@ -161,7 +165,29 @@ typedef struct {
 Statistics stats = {0, 0, 0, 0, 0, 1000.0, 0, PTHREAD_MUTEX_INITIALIZER};
 
 /* Atomic counter for active threads */
-atomic_int active_threads = 0;
+int active_threads = 0;
+/// Mutex, fencing `active_threads`
+pthread_mutex_t active_threads_mutex;
+
+/// Increment active treads count, fenced with mutex
+void increase_active_threads() {
+  if(pthread_mutex_lock(&active_threads_mutex) == 0) {
+    active_threads++; // Current active threads
+    pthread_mutex_unlock(&active_threads_mutex);
+  } else {
+    fprintf(stderr, "ERROR LOCKING MUTEX: 'active_threads_mutex' while trying 'active_threads++'");
+  }
+}
+
+/// Decrement active treads count, fenced with mutex
+void decrease_active_threads() {
+  if(pthread_mutex_lock(&active_threads_mutex) == 0) {
+    active_threads--; // Current active threads
+    pthread_mutex_unlock(&active_threads_mutex);
+  } else {
+    fprintf(stderr, "ERROR LOCKING MUTEX: 'active_threads_mutex' while trying 'active_threads--'");
+  }
+}
 
 /* Flag shared between main and signal handler to stop on signal */
 volatile sig_atomic_t keep_running = 1;
@@ -189,7 +215,7 @@ void handle_signals(int signum) {
 #else
     const char *name = get_signal_name(signum);
 #endif
-    printf("\nSignal SIG%s received, stopping new thread creation and "
+    fprintf(stdout, "\nSignal SIG%s received, stopping new thread creation and "
            "exiting...\n",
            name);
     keep_running = 0;
@@ -237,8 +263,6 @@ void stats_handled(double start) {
   /* Update requests statistics on exit */
   double end = get_time_seconds();
   double elapsed = end - start;
-  // printf("DEBUG: ***stats_handled(): start: %.12f end: %.12f elapsed:
-  // %.12f\n", start, end, elapsed);
   pthread_mutex_lock(&stats.stats_mutex);
   stats.max_latency = fmax(stats.max_latency, elapsed);
   stats.min_latency = fmin(stats.min_latency, elapsed);
@@ -257,9 +281,6 @@ void stats_unhandled(double start) {
   /* Update requests statistics on exit */
   double end = get_time_seconds();
   double elapsed = end - start;
-  // printf("DEBUG: ***stats_unhandled(): start: %.12f end: %.12f elapsed:
-  // %.12f\n",
-  //        start, end, elapsed);
   pthread_mutex_lock(&stats.stats_mutex);
   stats.max_latency = fmax(stats.max_latency, elapsed);
   stats.min_latency = fmin(stats.min_latency, elapsed);
@@ -313,7 +334,6 @@ void send_response(int client, int status, const char *status_text,
                          "Connection: close\r\n"
                          "\r\n",
                          status, status_text, mime, body_len);
-
   write(client, header, hdr_len);
   if (body_len > 0 && body) {
     write(client, body, body_len);
@@ -328,24 +348,23 @@ void send_response(int client, int status, const char *status_text,
 /// Respond with HTTP `503 Service Unavailable` error and
 // `retry_after` seconds number
 void send_response_503(int client, unsigned int retry_after) {
-  int status;
+  // int status;
   char header[1024];
-  const char *status_text, *body = "Service Unavailable";
+  char body[64];
+  const char *status_text = "Service Unavailable";
+  int body_len = snprintf(body, sizeof(body), "%s\r\n", status_text);
   const char *mime = "text/plain";
-  size_t body_len = 21;
   int hdr_len = snprintf(header, sizeof(header),
                          "HTTP/1.1 %d %s\r\n"
                          "Content-Type: %s\r\n"
                          "Content-Length: %zu\r\n"
+                         "Retry-After: %du\r\n"
                          "Connection: close\r\n"
-                         "Retry-After: %d\r\n"
                          "\r\n",
-                         status, status_text, mime, body_len, retry_after);
+                         503, status_text, mime, body_len, retry_after);
 
   write(client, header, hdr_len);
-  if (body_len > 0 && body) {
-    write(client, body, body_len);
-  }
+  write(client, body, body_len);
   /* Update requests statistics */
   pthread_mutex_lock(&stats.stats_mutex);
   stats.total_bytes_sent += hdr_len;
@@ -359,6 +378,7 @@ void send_response_503(int client, unsigned int retry_after) {
 void *unhandle_client(void *arg) {
 
   double start = get_time_seconds();
+  increase_active_threads();
 
   client_arg_t *carr = (client_arg_t *)arg;
   int client = carr->client_fd;
@@ -367,7 +387,6 @@ void *unhandle_client(void *arg) {
   send_response_503(client, 10);
   close(client);
   stats_unhandled(start);
-  atomic_fetch_sub(&active_threads, 1);
   if (is_debug) {
     char *dhdr = debug_hdr();
     pthread_t tid = pthread_self();
@@ -376,12 +395,13 @@ void *unhandle_client(void *arg) {
             " with HTTP status 503 Service Unavailable");
     free(dhdr);
   }
+  decrease_active_threads();
   pthread_exit(NULL);
 }
 
 void *handle_client(void *arg) {
   double start = get_time_seconds();
-  atomic_fetch_add(&active_threads, 1);
+  increase_active_threads();
 
   if (is_debug) {
     char *dhdr = debug_hdr();
@@ -409,7 +429,6 @@ void *handle_client(void *arg) {
     send_response(client, 400, "Bad Request", "text/plain", "Bad Request", 13);
     close(client);
     stats_handled(start);
-    atomic_fetch_sub(&active_threads, 1);
     if (is_debug) {
       char *dhdr = debug_hdr();
       pthread_t tid = pthread_self();
@@ -418,6 +437,7 @@ void *handle_client(void *arg) {
               (unsigned long)tid, " with HTTP status 400 Bad Request");
       free(dhdr);
     }
+    decrease_active_threads();
     pthread_exit(NULL);
   }
 
@@ -431,7 +451,6 @@ void *handle_client(void *arg) {
     send_response(client, 403, "Forbidden", "text/plain", "Forbidden", 9);
     close(client);
     stats_handled(start);
-    atomic_fetch_sub(&active_threads, 1);
     if (is_debug) {
       char *dhdr = debug_hdr();
       pthread_t tid = pthread_self();
@@ -440,6 +459,7 @@ void *handle_client(void *arg) {
               (unsigned long)tid, " with HTTP status 403 Forbidden");
       free(dhdr);
     }
+    decrease_active_threads();
     pthread_exit(NULL);
   }
 
@@ -454,7 +474,6 @@ void *handle_client(void *arg) {
                     13);
       close(client);
       stats_handled(start);
-      atomic_fetch_sub(&active_threads, 1);
       if (is_debug) {
         char *dhdr = debug_hdr();
         pthread_t tid = pthread_self();
@@ -463,6 +482,7 @@ void *handle_client(void *arg) {
                 (unsigned long)tid, " with HTTP status 404 Not Found");
         free(dhdr);
       }
+      decrease_active_threads();
       pthread_exit(NULL);
     }
   }
@@ -472,7 +492,6 @@ void *handle_client(void *arg) {
     send_response(client, 404, "Not Found", "text/plain", "404 Not Found", 13);
     close(client);
     stats_handled(start);
-    atomic_fetch_sub(&active_threads, 1);
     if (is_debug) {
       char *dhdr = debug_hdr();
       pthread_t tid = pthread_self();
@@ -481,6 +500,7 @@ void *handle_client(void *arg) {
               (unsigned long)tid, " with HTTP status 404 Not Found");
       free(dhdr);
     }
+    decrease_active_threads();
     pthread_exit(NULL);
   }
 
@@ -514,7 +534,6 @@ void *handle_client(void *arg) {
   free(body);
   close(client);
   stats_handled(start);
-  atomic_fetch_sub(&active_threads, 1);
   if (is_debug) {
     char *dhdr = debug_hdr();
     pthread_t tid = pthread_self();
@@ -523,6 +542,7 @@ void *handle_client(void *arg) {
             (unsigned long)tid, " with HTTP status 200 OK");
     free(dhdr);
   }
+  decrease_active_threads();
   pthread_exit(NULL);
 }
 
@@ -582,11 +602,11 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  // Program name
-  int command_name_len = snprintf(
-      command,
-      (sizeof(argv[0]) < sizeof(command) ? sizeof(argv[0]) : sizeof(command)),
-      "%s", argv[0]);
+  // Limit program name to maximum PROGRAM_NAME_LEN
+  int argv_len = strlen(argv[0]);
+  int command_name_len = argv_len < PROGRAM_NAME_LEN ? argv_len : PROGRAM_NAME_LEN;
+  strncpy(command, argv[0], command_name_len);
+  command[command_name_len] = '\0';
   const char *debugenv = getenv("DEBUG");
   if (debugenv != NULL) {
     const char *lower_env = to_lower(debugenv);
@@ -596,7 +616,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "%s Running server in DEBUG mode\n", dhdr);
     }
   }
-  printf("Multithreaded HTTP server listening on port %d\nPress Ctrl+C to stop "
+  fprintf(stdout, "Multithreaded HTTP server listening on port %d\nPress Ctrl+C to stop "
          "safely...\n",
          port);
 
@@ -605,7 +625,7 @@ int main(int argc, char *argv[]) {
     if (is_debug) {
       char *dhdr = debug_hdr();
       fprintf(stderr, "%s %s%lu.\n", dhdr,
-              "Started request handling main loop count=", loop_count);
+              "In main loop count=", loop_count);
       proc_stat *st;
       int cpu_utime;
       int cpu_stime;
@@ -615,9 +635,9 @@ int main(int argc, char *argv[]) {
       } else {
         cpu_utime = cpu_stime = 0;
       }
-      fprintf(stderr, "%s %s%lu%s%d%s%d%s%d.\n", dhdr,
-              "Process stats: RSS=", get_mem_rss(), " CPU system time=", cpu_stime, " CPU user time=", cpu_utime,
-              " opened file descriptors=", get_open_fd_count());
+      fprintf(stderr, "%s %s%lu%s%d%s%d%s%d%s%s%d%s.\n", dhdr,
+              "Process stats: [RSS=", get_mem_rss()/1024, " Kbytes] [CPU_system=", cpu_stime, "] [CPU_user=", cpu_utime,
+              "], [opened_file_descriptors=", get_open_fd_count(), "]", " [active_threads=", active_threads, "]");
       free(dhdr);
     }
     loop_count++;
@@ -636,12 +656,11 @@ int main(int argc, char *argv[]) {
      * Retry `retry` times and the return server error (HTTP 500)
      */
     int retry = MAX_THREADS_RETRY_COUNT;
-    int cathreads = atomic_load(&active_threads); // Current active threads
-    while ((cathreads >= MAX_THREADS) && (retry > 0)) {
+    while ((active_threads >= MAX_THREADS) && (retry > 0)) {
       if (is_debug) {
         char *dhdr = debug_hdr();
         fprintf(stderr, "%s %s%d%s%d%s%d.\n", dhdr,
-                "Waiting for active_threads=", atomic_load(&active_threads),
+                "Waiting for active_threads=", active_threads,
                 " to become lower then MAX_THREADS=", MAX_THREADS, " retry ",
                 retry);
         free(dhdr);
@@ -649,12 +668,11 @@ int main(int argc, char *argv[]) {
       /* Wait a bit before retrying */
       retry--;
       usleep(SLEEP_NSEC);
-      cathreads = atomic_load(&active_threads);
     }
     /* Return server error because of overload and continue*/
     if (retry <= 0) {
-      pthread_t tid;
-      if (pthread_create(&tid, NULL, unhandle_client, carr) != 0) {
+      pthread_t etid;
+      if (pthread_create(&etid, NULL, unhandle_client, carr) != 0) {
         perror("pthread_create");
         free(carr);
         close(client);
@@ -666,17 +684,16 @@ int main(int argc, char *argv[]) {
       if (is_debug) {
         char *dhdr = debug_hdr();
         fprintf(stderr, "%s %s%d%s.\n", dhdr, "Sending 503 HTTP Error because ",
-                cathreads, " threads are still running");
+                active_threads, " threads are still running");
         fprintf(stderr, "%s %s%lu.\n", dhdr,
-                "Spawning HTTP error handler in tid=", (unsigned long)tid);
+                "Spawning HTTP error handler in tid=", (unsigned long)etid);
         free(dhdr);
       }
       /* Update started count */
       pthread_mutex_lock(&stats.stats_mutex);
       stats.total_threads_started++;
       pthread_mutex_unlock(&stats.stats_mutex);
-      atomic_fetch_add(&active_threads, 1);
-      pthread_detach(tid);
+      pthread_detach(etid);
       continue;
     }
 
@@ -701,35 +718,33 @@ int main(int argc, char *argv[]) {
     pthread_mutex_lock(&stats.stats_mutex);
     stats.total_threads_started++;
     pthread_mutex_unlock(&stats.stats_mutex);
-    atomic_fetch_add(&active_threads, 1);
     pthread_detach(tid);
   }
 
   /* Wait while threads are still active */
-  while (atomic_load(&active_threads) > 0) {
-    printf("\nWaiting for remaining %d threads to finish...\n",
-           atomic_load(&active_threads));
+  while (active_threads > 0) {
+    fprintf(stdout, "\nWaiting for remaining %d threads to finish...\n", active_threads);
     usleep(10000);
   }
 
   int end_time = (int)get_time_seconds();
   int uptime = end_time - start_time;
   /* Print final statistics */
-  printf("\n======== Final Statistics ========\n");
-  printf("Total threads started:        %d\n", stats.total_threads_started);
-  printf("Total threads finished:       %d\n", stats.total_threads_finished);
-  printf("Thread failures:              %d\n", stats.thread_failures);
-  printf("Total HTTP request processed: %llu\n", stats.total_request_handled);
-  printf("Total bytes sent:             %llu\n", stats.total_bytes_sent);
-  printf("Minimum request latency, ms:  %.6f\n",
+  fprintf(stdout, "\n======== Final Statistics ========\n");
+  fprintf(stdout, "Total threads started:        %d\n", stats.total_threads_started);
+  fprintf(stdout, "Total threads finished:       %d\n", stats.total_threads_finished);
+  fprintf(stdout, "Thread failures:              %d\n", stats.thread_failures);
+  fprintf(stdout, "Total HTTP request processed: %llu\n", stats.total_request_handled);
+  fprintf(stdout, "Total bytes sent:             %llu\n", stats.total_bytes_sent);
+  fprintf(stdout, "Minimum request latency, ms:  %.6f\n",
          (stats.min_latency == 1000) ? 0 : stats.min_latency * 1000);
+  fprintf(stdout, "Maximum request latency, ms:  %.6f\n", stats.max_latency * 1000);
+  fprintf(stdout, "Server uptime, s:             %d\n", uptime);
+  fprintf(stdout, "==================================\n");
 
-  printf("Maximum request latency, ms:  %.6f\n", stats.max_latency * 1000);
-  printf("Server uptime, s:             %d\n", uptime);
-  printf("==================================\n");
-
-  /* Cleanup mutex */
+  /* Cleanup mutexes */
   pthread_mutex_destroy(&stats.stats_mutex);
+  pthread_mutex_destroy(&active_threads_mutex);
 
   close(server_fd);
   return 0;
