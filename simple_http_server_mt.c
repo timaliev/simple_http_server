@@ -352,8 +352,8 @@ void send_response_503(int client, unsigned int retry_after) {
   char header[1024];
   char body[64];
   const char *status_text = "Service Unavailable";
-  int body_len = snprintf(body, sizeof(body), "%s\r\n", status_text);
-  const char *mime = "text/plain";
+  int body_len = snprintf(body, sizeof(body), "%s", status_text);
+  const char *mime = "text/plain; charset=utf-8";
   int hdr_len = snprintf(header, sizeof(header),
                          "HTTP/1.1 %d %s\r\n"
                          "Content-Type: %s\r\n"
@@ -361,7 +361,7 @@ void send_response_503(int client, unsigned int retry_after) {
                          "Retry-After: %du\r\n"
                          "Connection: close\r\n"
                          "\r\n",
-                         503, status_text, mime, body_len, retry_after);
+                         503, status_text, mime, (size_t)body_len, retry_after);
 
   write(client, header, hdr_len);
   write(client, body, body_len);
