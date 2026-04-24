@@ -18,7 +18,7 @@ You can checkout repository and start things up using `make`. Supplied `Makefile
 
 ```shell
 $ git clone https://github.com/timaliev/about_http.git
-$ cd simple_http_server
+$ cd about_http
 $ make
 ```
 
