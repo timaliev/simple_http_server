@@ -17,7 +17,7 @@ Project was born from simple demand to serve custom error page while using with 
 You can checkout repository and start things up using `make`. Supplied `Makefile` contains basic scenarios. Without arguments, `make` will build image and start demo container locally with `docker` or `containerd`.
 
 ```shell
-$ git clone https://github.com/timaliev/simple_http_server.git
+$ git clone https://github.com/timaliev/about_http.git
 $ cd simple_http_server
 $ make
 ```
