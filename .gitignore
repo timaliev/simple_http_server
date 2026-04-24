@@ -1,4 +1,5 @@
 **/log/
 **/bin/
 *.log
-/tests/files
+/tests/files/
+/tests/urls.txt

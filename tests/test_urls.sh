@@ -146,7 +146,9 @@ function files_with_random_lines() {
 URLS_FILE=${URLS_FILE:-urls.txt}
 LIGHT_PATHS=${LIGHT_PATHS:-light_paths.txt}
 FILES_DIR=${FILES_DIR:-files}
-SERVER_URL="${SERVER_URL:-http://localhost:8080}"
+HOSTNAME=${HOSTNAME:-localhost}
+PORT=${PORT:-8080}
+SERVER_URL="${SERVER_URL:-http://${HOSTNAME}:${PORT}}"
 NUMBER_OF_LINES=${NUMBER_OF_LINES:-100}
 PARALLELISM=${PARALLELISM:-100} # How many parallel `curl` processes
 LOGS=${LOGS:-./log}
@@ -208,6 +210,7 @@ test_chunk_mod=$((${lines} % ${PARALLELISM}))
 
 [ -d "${LOGS}" ] || mkdir -p "${LOGS}"
 
+start=$(date +%s)
 # Make `CNUMBER` equal cycles
 for i in $(seq ${CNUMBER}); do
   for take in $(seq 0 ${test_chunks}); do
@@ -222,5 +225,7 @@ for i in $(seq ${CNUMBER}); do
     # sleep 0.3
   done
 done
+end=$(date +%s)
 
-sleep 30
+echo "TOTAL TEST TIME: $((${end} - ${start})) sec."
+sleep 3
